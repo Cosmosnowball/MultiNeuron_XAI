@@ -44,10 +44,11 @@ def process_images_and_save_filters(folder_path):
     
     #폴더 내 모든 파일 순회, 이미지 파일만 수집
     for fname in os.listdir(folder_path):
-        if fname.lower().endswith(('.jpg', '.png')):
+        if fname.lower().endswith(('.jpg', '.png', '.jpeg')):  # 이미지 확장자 필터링
             image_paths.append(os.path.join(folder_path, fname)) #파일의 전체 경로를 저장장
 
     if not image_paths:
+        print(f"{folder_path} → 이미지가 없습니다.")
         return False  # 이미지 없음
 
     filter_counts = {layer: None for layer in ['conv1', 'layer1', 'layer2', 'layer3', 'layer4']}
@@ -91,11 +92,8 @@ def process_images_and_save_filters(folder_path):
     parent_dir = os.path.basename(os.path.dirname(folder_path))
     current_dir = os.path.basename(folder_path)
 
-    # createimage 폴더일 경우 level1_cluster_0_createimage.csv, 아닐 경우 level1_cluster_0.csv
-    if current_dir.lower() == "createimage":
-        csv_name = f"{parent_dir}_createimage.csv"  # createimage 폴더의 경우 활성화 뉴런을 구할 필요 없음. 그냥 무시하면 됨. 이부분 수정 필요.
-    else:
-        csv_name = f"{current_dir}.csv"
+    # csv 파일 이름 생성
+    csv_name = f"{current_dir}.csv"
 
     csv_filename = os.path.join(folder_path, csv_name) # 최종 CSV 파일 경로
  
@@ -116,7 +114,7 @@ def aggregate_common_filters_from_children(parent_path):
         os.path.join(parent_path, name)
         for name in os.listdir(parent_path)
         if os.path.isdir(os.path.join(parent_path, name))
-        and not name.lower().endswith('createimage')  #  createimage 제외
+           and name.lower() not in ("createimage", "samples")
     ]
 
     csv_files = []
@@ -168,12 +166,14 @@ def recursive_traverse(folder_path, level=0):
     subfolders = [
         f for f in os.listdir(folder_path)
         if os.path.isdir(os.path.join(folder_path, f))
+           and f.lower() not in ("createimage", "samples")
     ]
     full_paths = [os.path.join(folder_path, sub) for sub in subfolders]
-
-    # 만약 현재 폴더가 'createimage'라면 그대로 이미지 처리
-    if os.path.basename(folder_path) == "createimage":
-        process_images_and_save_filters(folder_path)
+    
+    
+    # 'createimage' 또는 'samples' 폴더는 완전 무시
+    if os.path.basename(folder_path).lower() in ("createimage", "samples"):
+        print(f"[SKIP] createimage 또는 samples 폴더는 처리하지 않습니다: {folder_path}")
         return
 
     # 하위 폴더가 없다면 (leaf 폴더): 이미지 처리
@@ -204,6 +204,7 @@ def recursive_traverse(folder_path, level=0):
 
 # 최상위 경로부터 실행 (예: level6이 있는 경로)
 if __name__ == "__main__":
+    print("공통 활성화 뉴런 필터 집계 시작...")
     top_folder = TOP_FOLDER # FINCH 클러스터링 결과 폴더
     recursive_traverse(top_folder)
 

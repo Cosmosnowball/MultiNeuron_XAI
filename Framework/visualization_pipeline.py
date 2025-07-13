@@ -15,28 +15,21 @@ def get_cluster_label(dir_name):
 
 
 def make_montage(image_paths, caption, neuron_info, output_path,
-                 thumb_size=(128, 128), grid_size=(5, 2), margin=5, font_path=None):
+                 thumb_size=(64, 64), grid_size=(5, 2), margin=3, font_path=None):
     cols, rows = grid_size
     thumb_w, thumb_h = thumb_size
 
-    # 폰트 로드
+    # 폰트 로드 및 크기 설정
     if font_path and os.path.exists(font_path):
-        font = ImageFont.truetype(font_path, size=16)
+        font = ImageFont.truetype(font_path, size=12)
     else:
         font = ImageFont.load_default()
 
-    # 텍스트 크기 계산: Pillow v10 이후 textsize 대신 getbbox 사용
-    # 대표 캡션 높이
+    # 텍스트 높이 계산
     cap_bbox = font.getbbox(caption)
     cap_h = cap_bbox[3] - cap_bbox[1]
-    # 뉴런 정보 높이 합
     info_lines = neuron_info.split('\n')
-    info_h = 0
-    for line in info_lines:
-        bbox = font.getbbox(line)
-        line_h = bbox[3] - bbox[1]
-        info_h += line_h + margin
-
+    info_h = sum((font.getbbox(line)[3] - font.getbbox(line)[1]) + margin for line in info_lines)
     text_area_h = cap_h + margin + info_h
 
     # 몽타주 캔버스 크기
@@ -47,11 +40,14 @@ def make_montage(image_paths, caption, neuron_info, output_path,
 
     # 썸네일 붙이기
     for i, img_path in enumerate(image_paths):
-        img = Image.open(img_path)
-        img.thumbnail((thumb_w, thumb_h))
-        x = margin + (i % cols) * (thumb_w + margin)
-        y = margin + (i // cols) * (thumb_h + margin)
-        montage.paste(img, (x, y))
+        try:
+            img = Image.open(img_path)
+            img.thumbnail((thumb_w, thumb_h))
+            x = margin + (i % cols) * (thumb_w + margin)
+            y = margin + (i // cols) * (thumb_h + margin)
+            montage.paste(img, (x, y))
+        except Exception:
+            pass
 
     # 텍스트 출력 좌표
     text_x = margin
@@ -64,14 +60,21 @@ def make_montage(image_paths, caption, neuron_info, output_path,
     y_offset = text_y + cap_h + margin
     for line in info_lines:
         draw.text((text_x, y_offset), line, font=font, fill=(0, 0, 0))
-        bbox = font.getbbox(line)
-        line_h = bbox[3] - bbox[1]
+        line_h = font.getbbox(line)[3] - font.getbbox(line)[1]
         y_offset += line_h + margin
 
-    montage.save(output_path)
+    # 용량 절감을 위해 WebP 포맷 + 낮은 품질로 저장
+    webp_path = output_path.replace('.png', '.webp')
+    montage.save(
+        webp_path,
+        format='WEBP',
+        quality=50,
+        method=6,
+        optimize=True
+    )
 
 
-def process_directory(dir_path, base_path, thumb_size=(128, 128)):
+def process_directory(dir_path, base_path, thumb_size=(64, 64)):
     # 'samples' 폴더는 제외
     children = [d for d in os.listdir(dir_path)
                 if os.path.isdir(os.path.join(dir_path, d)) and d != 'samples']
@@ -105,7 +108,7 @@ def process_directory(dir_path, base_path, thumb_size=(128, 128)):
             img = Image.open(img_path)
             img.thumbnail(thumb_size)
             thumb_path = os.path.join(samples_dir, f'sample_{idx}.png')
-            img.save(thumb_path)
+            img.save(thumb_path, format='PNG', optimize=True)
             downsized_paths.append(thumb_path)
         except Exception as e:
             print(f"이미지 처리 실패: {img_path} -> {e}")
@@ -130,7 +133,7 @@ def process_directory(dir_path, base_path, thumb_size=(128, 128)):
     output_path = os.path.join(viz_dir, montage_name)
 
     make_montage(downsized_paths, caption, neuron_info, output_path)
-    print(f"{dir_path} 처리가 완료되어 {output_path}에 저장되었습니다.")
+    print(f"{dir_path} 처리가 완료되어 {output_path.replace('.png', '.webp')}에 저장되었습니다.")
 
 
 def main():
