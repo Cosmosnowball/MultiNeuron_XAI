@@ -71,7 +71,7 @@ def process_images_and_save_filters(folder_path):
                 # Falcon 방식으로 threshold 계산
                 m = mean_per_filter.mean()      # 전체 채널 평균
                 s = mean_per_filter.std()       # 전체 채널 표준편차
-                lim = 5                         # Falcon 하이퍼파라미터
+                lim = 2                         # Falcon 하이퍼파라미터
                 high_thresh = m + lim * s       # 상위 활성화 기준
                 selected_filters = np.where(mean_per_filter > high_thresh)[0]
 

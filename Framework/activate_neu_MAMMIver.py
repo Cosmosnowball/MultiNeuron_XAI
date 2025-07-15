@@ -69,7 +69,7 @@ def process_images_and_save_filters(folder_path):
                 mean_per_filter = activation.mean(dim=(0, 2, 3)).cpu().numpy()
 
                 # ─── MAMMI 방식 threshold 계산 ───
-                adaptive_percent = 90
+                adaptive_percent = 80
                 max_act  = mean_per_filter.max()
                 min_act  = mean_per_filter.min()
                 interval = max_act - min_act
@@ -125,7 +125,7 @@ def aggregate_common_filters_from_children(parent_path):
         for _, row in df.iterrows():
             layer = row['Layer']
             filters_str = row['Selected Filter Indices']
-            if pd.notna(filters_str) and filters_str.strip():
+            if pd.notna(filters_str) and isinstance(filters_str, str) and filters_str.strip():
                 neuron_indices = set(map(int, filters_str.split(',')))
             else:
                 neuron_indices = set()
